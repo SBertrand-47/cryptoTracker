@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cryptocurrency Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #main-container {
+            width: 80%;
+            margin: auto;
+            padding-top: 50px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {background-color: #f2f2f2;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="main-container">
+        <h1>Cryptocurrency Tracker</h1>
+        <table id="crypto-table">
+            <tr>
+                <th>Cryptocurrency</th>
+                <th>Price (USD)</th>
+            </tr>
+            <!-- Data will be inserted here -->
+        </table>
+    </div>
+    <canvas id="crypto-chart"></canvas>
+
+<script>
+    fetchData();
+    fetchHistoryData();
+
+    // Then fetch data every 5 seconds
+    setInterval(fetchData, 5000);
+
+    // Function to fetch current price data and update the table
+    function fetchData() {
+    fetch('/api/crypto')
+        .then(response => {
+            console.log('fetchData response status:', response.status);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(cryptoData => {
+            console.log('fetchData response data:', cryptoData);
+            var table = document.getElementById('crypto-table');
+            for (var i = 0; i < cryptoData.length; i++) {
+                var row = document.getElementById(cryptoData[i].name);
+                if (row === null) {
+                    // If the row does not exist, create it
+                    row = document.createElement('tr');
+                    row.id = cryptoData[i].name;
+
+                    var nameCell = document.createElement('td');
+                    nameCell.innerText = cryptoData[i].name;
+                    row.appendChild(nameCell);
+
+                    var priceCell = document.createElement('td');
+                    row.appendChild(priceCell);
+
+                    table.appendChild(row);
+                }
+
+                // Update the price
+                row.children[1].innerText = '$' + cryptoData[i].price_usd;
+            }
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+        });
+    }
+
+    // Function to fetch historical data and create the chart
+    function fetchHistoryData() {
+        fetch('/api/crypto-history')
+            .then(response => {
+                console.log('fetchHistoryData response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(cryptoHistoryData => {
+                console.log('fetchHistoryData response data:', cryptoHistoryData);
+                // Prepare the data for the chart
+                var labels = cryptoHistoryData.Bitcoin.dates; // Use the dates from the Bitcoin data as the labels
+                var datasets = [];
+                for (var crypto in cryptoHistoryData) {
+                    var dataset = {
+                        label: crypto,
+                        data: cryptoHistoryData[crypto].prices,
+                        fill: false,
+                        borderColor: getColorForCrypto(crypto), // Get a different color for each cryptocurrency
+                        tension: 0.1
+                    };
+                    datasets.push(dataset);
+                }
+
+                // Create the chart
+                var ctx = document.getElementById('crypto-chart').getContext('2d');
+                var myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Cryptocurrency Prices Over Time'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            hover: {
+                                mode: 'nearest',
+                                intersect: true
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    title: {
+                                        display: true
+                                    }
+                                },
+                                y: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Price (USD)'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('There has been a problem with your fetch operation:', error);
+            });
+    }
+
+    // Function to get a different color for each cryptocurrency
+    function getColorForCrypto(crypto) {
+        switch (crypto) {
+            case 'Bitcoin':
+                return 'rgb(255, 99, 132)';
+            case 'Ethereum':
+                return 'rgb(54, 162, 235)';
+            case 'Litecoin':
+                return 'rgb(255, 206, 86)';
+            case 'Dogecoin':
+                return 'rgb(75, 192, 192)';
+            default:
+                return 'rgb(201, 203, 207)';
+        }
+    }
+</script>
+
+</body>
+</html>
